@@ -1,7 +1,7 @@
 pandas
-peft
 sentencepiece
 torch
 torchvision
 torchaudio
 scikit-learn
+wandb

@@ -16,15 +16,21 @@ from rui_model_debug import LlamaForSequenceClassification
 
 from llama_dataloader import BinaryClassificationDataset
 
+os.environ["WANDB_MODE"] = "dryrun"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-device = "cpu"
+# device = "cpu"
 print(device)
 
-tokenizer = LlamaTokenizer.from_pretrained("/home/ubuntu/projects/ranking_llama/weights/llama-7b/")
-model = LlamaForSequenceClassification.from_pretrained("/home/ubuntu/projects/ranking_llama/weights/llama-7b/")
+FOLDER_PATH = os.getcwd()
+
+model_path = os.path.join(FOLDER_PATH, "weights/llama-7b")
+
+tokenizer = LlamaTokenizer.from_pretrained(model_path)
+model = LlamaForSequenceClassification.from_pretrained(model_path)
+# , load_in_8bit=True, device_map='auto', torch_dtype=torch.float16,)
 
 print("moving model to PEFT")
 peft_config = LoraConfig(
@@ -41,9 +47,10 @@ model.print_trainable_parameters()
 # model = model.half()
 model = model.to(device)
 
+print("FOLDER_PATH: ", FOLDER_PATH)
 
-directory = "/home/ubuntu/projects/ranking_llama/data"
-training_dir = "/home/ubuntu/projects/ranking_llama/training"
+directory = os.path.join(FOLDER_PATH, "data")
+training_dir = os.path.join(FOLDER_PATH, "training")
 train_df = pd.read_csv(os.path.join(directory, 'train_data_01_4_200.csv'), delimiter='$')
 
 train_df['jd_reusme'] = train_df['query'] + "\n" + train_df['resume']
@@ -92,7 +99,7 @@ training_args = TrainingArguments(
     save_steps=500,
     fp16=True,
     tf32=True,
-    # max_steps=2
+    max_steps=2
 )
 
 
@@ -104,4 +111,3 @@ trainer = Trainer(
 )
 
 trainer.train()
-
