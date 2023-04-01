@@ -5,3 +5,5 @@ torchvision
 torchaudio
 scikit-learn
 wandb
+accelerate
+bitsandbytes>=0.37.0

@@ -37,7 +37,6 @@ RUN pip install git+https://github.com/huggingface/transformers
 RUN git clone https://github.com/ruian1/llamma_training.git && \
     cd llamma_training && \
     pip install -r requirements.txt
-RUN pip install wandb
 
 
 # Set the working directory

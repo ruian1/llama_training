@@ -28,24 +28,31 @@ FOLDER_PATH = os.getcwd()
 
 model_path = os.path.join(FOLDER_PATH, "weights/llama-7b")
 
+load_in_8bit = True
+
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
-model = LlamaForSequenceClassification.from_pretrained(model_path)
-# , load_in_8bit=True, device_map='auto', torch_dtype=torch.float16,)
+if load_in_8bit:
+    model = LlamaForSequenceClassification.from_pretrained(model_path, 
+                                                           load_in_8bit=load_in_8bit, 
+                                                           torch_dtype=torch.float16,
+                                                           device_map="auto")
 
-print("moving model to PEFT")
-peft_config = LoraConfig(
-    task_type=TaskType.SEQ_CLS, 
-    inference_mode=False, 
-    r=8, 
-    lora_alpha=32, 
-    lora_dropout=0.1, 
-    # target_modules=["q_proj", "v_proj"]
-)
-model = get_peft_model(model, peft_config)
-model.print_trainable_parameters()
+if not load_in_8bit:
+    model = LlamaForSequenceClassification.from_pretrained(model_path)
+    print("moving model to PEFT")
+    peft_config = LoraConfig(
+        task_type=TaskType.SEQ_CLS, 
+        inference_mode=False, 
+        r=8, 
+        lora_alpha=32, 
+        lora_dropout=0.1, 
+        # target_modules=["q_proj", "v_proj"]
+    )
+    model = get_peft_model(model, peft_config)
+    model.print_trainable_parameters()
 
-# model = model.half()
-model = model.to(device)
+    model = model.half()
+    model = model.to(device)
 
 print("FOLDER_PATH: ", FOLDER_PATH)
 
@@ -68,7 +75,7 @@ if tokenizer.pad_token is None:
     model.resize_token_embeddings(len(tokenizer))
     
     
-MAX_LENGTH = 64
+MAX_LENGTH = 512
 train_dataset = BinaryClassificationDataset(train_data, tokenizer, max_length=MAX_LENGTH)
 valid_dataset = BinaryClassificationDataset(valid_data, tokenizer, max_length=MAX_LENGTH)
     
@@ -84,6 +91,8 @@ valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size)
 # optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 # scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
 
+fp16 = False if load_in_8bit else True
+
 training_args = TrainingArguments(
     output_dir=os.path.join(training_dir, './results'),
     num_train_epochs=epochs,
@@ -97,7 +106,7 @@ training_args = TrainingArguments(
     # evaluation_strategy="epoch",
     save_strategy="epoch",
     save_steps=500,
-    fp16=True,
+    fp16=fp16,
     tf32=True,
     max_steps=2
 )
