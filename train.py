@@ -28,7 +28,7 @@ FOLDER_PATH = os.getcwd()
 
 model_path = os.path.join(FOLDER_PATH, "weights/llama-7b")
 
-load_in_8bit = True
+load_in_8bit = False
 
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
 if load_in_8bit:
@@ -51,7 +51,7 @@ if not load_in_8bit:
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
-    model = model.half()
+    # model = model.half()
     model = model.to(device)
 
 print("FOLDER_PATH: ", FOLDER_PATH)
@@ -75,7 +75,7 @@ if tokenizer.pad_token is None:
     model.resize_token_embeddings(len(tokenizer))
     
     
-MAX_LENGTH = 512
+MAX_LENGTH = 128
 train_dataset = BinaryClassificationDataset(train_data, tokenizer, max_length=MAX_LENGTH)
 valid_dataset = BinaryClassificationDataset(valid_data, tokenizer, max_length=MAX_LENGTH)
     
@@ -83,6 +83,7 @@ epochs = 1
 batch_size = 1
 lr = 2e-5
 warmup_steps = 500
+MAX_STEPS = 2
 num_training_steps = epochs * (len(train_dataset) // batch_size)
 
 train_dataloader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size)
@@ -108,7 +109,7 @@ training_args = TrainingArguments(
     save_steps=500,
     fp16=fp16,
     tf32=True,
-    max_steps=2
+    max_steps=MAX_STEPS,
 )
 
 
