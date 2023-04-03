@@ -1,0 +1,17 @@
+{
+    "model": {
+        "max_sql_len": 512
+    },
+    "training": {
+        "batch_size": 2,
+        "epochs": 10,
+        "fp16": false,
+        "load_in_8bit": false,
+        "learning_rate": 2e-5,
+        "max_steps": 5000,
+        "warmup_steps": 500
+    },
+    "data": {
+        "training_data_file": "train_data_01_4_200.csv"
+    }
+  }
