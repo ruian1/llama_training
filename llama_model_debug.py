@@ -43,6 +43,10 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
             config.num_labels - 1]`. If `config.num_labels == 1` a regression loss is computed (Mean-Square loss), If
             `config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
+        
+        # print("-" * 100)    
+        # print("attention_mask: ", attention_mask)
+        
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         transformer_outputs = self.model(
@@ -57,7 +61,17 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
         )
         hidden_states = transformer_outputs[0]
         
+        # print("!!!hidden_states: ", hidden_states.shape)
+        # first_10 = hidden_states[:, :10, :]
+        # for i in range(10):
+        #     print(f"!!!Vector {i+1}: {first_10[:, i, :]}")
+        
+        # print("!!!hidden_states: ", hidden_states)
+        
         logits = self.score(hidden_states)
+        
+        # print("in debug logits: ", logits.shape)
+        # print("in debug logits: ", logits)
 
         if input_ids is not None:
             batch_size = input_ids.shape[0]
@@ -74,9 +88,18 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
             else:
                 sequence_lengths = -1
 
+        # print("input_ids: ", input_ids)
+        # print("self.config.pad_token_id: ", self.config.pad_token_id)
+        # print("sequence_lengths: ", sequence_lengths)
+        # print("logits: ", logits)
+
         pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
 
+        # print("pooled_logits: ", pooled_logits.shape)
+
         loss = None
+        # print("labels: ", labels)
+        
         if labels is not None:
             if self.config.problem_type is None:
                 if self.num_labels == 1:
@@ -86,6 +109,8 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
                 else:
                     self.config.problem_type = "multi_label_classification"
 
+            # print("problem_type: ", self.config.problem_type)
+
             if self.config.problem_type == "regression":
                 loss_fct = MSELoss()
                 if self.num_labels == 1:
@@ -94,8 +119,10 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
                     loss = loss_fct(pooled_logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = CrossEntropyLoss()
-                                      
+                # print("     pooled_logits: ", pooled_logits)
+                # print("     labels: ", labels)
                 loss = loss_fct(pooled_logits.view(-1, self.num_labels), labels.view(-1))
+                # print("     loss: ", loss)
                 
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()

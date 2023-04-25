@@ -1,17 +1,24 @@
 {
     "model": {
-        "max_sql_len": 512
+        "max_sql_len": 768
+    },
+    "wandb":{
+        "api_key": "5617949e3d5b42e9e136f12056e9cc9eaa45f746"
     },
     "training": {
-        "batch_size": 2,
-        "epochs": 10,
+        "batch_size": 1,
+        "epochs": 2,
         "fp16": false,
+        "gradient_accumulation_steps": 8,
         "load_in_8bit": false,
         "learning_rate": 2e-5,
-        "max_steps": 5000,
-        "warmup_steps": 500
+        "save_strategy": "epoch",
+        "max_steps": 20,
+        "save_steps": 10
     },
     "data": {
-        "training_data_file": "train_data_01_4_200.csv"
+        "training_data_file": "train_data_3_pos_3_neg_10000_req_parsed.json",
+        "training_data_file-2": "small.csv"
+
     }
   }

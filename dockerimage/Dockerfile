@@ -6,6 +6,7 @@ FROM nvidia/cuda:11.6.1-devel-ubuntu20.04 as cuda-build
 
 # Install git
 RUN apt-get update && apt-get install -y git && \
+    apt-get install -y emacs &&\ 
     apt-get install -y --no-install-recommends apt-utils  && \
     rm -rf /var/lib/apt/lists/*
 
