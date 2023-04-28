@@ -4,8 +4,11 @@ FROM python:3.10.10 AS python-build
 # Second stage: image with CUDA and Python
 FROM nvidia/cuda:11.6.1-devel-ubuntu20.04 as cuda-build
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install git
-RUN apt-get update && apt-get install -y git && \
+RUN apt-get update && \
+    apt-get install -y git && \
     apt-get install -y emacs &&\ 
     apt-get install -y --no-install-recommends apt-utils  && \
     rm -rf /var/lib/apt/lists/*

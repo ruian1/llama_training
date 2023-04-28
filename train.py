@@ -12,7 +12,9 @@ from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, RandomSampler
 from transformers import (AdamW, LlamaTokenizer, Trainer, TrainingArguments,
-                          LlamaForSequenceClassification)
+                          LlamaForSequenceClassification, AutoConfig, 
+                          AutoModelForSequenceClassification)
+from huggingface_hub import hf_hub_download
 
 from llama_dataloader import BinaryClassificationDataset
 # from llama_model_debug import LlamaForSequenceClassification
@@ -21,9 +23,12 @@ from llama_peft_callback import SavePeftModelCallback
 from utility import compute_metrics
 
 
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 with open('config/config_peft.json', 'r') as f:
     config = json.load(f)
 
+print("config is")
 print(config)
 
 batch_size = config['training']['batch_size']
@@ -39,8 +44,10 @@ save_strategy = config['training']['save_strategy']
 max_steps = config['training']['max_steps']
 save_steps = config['training']['save_steps']
 # warmup_steps = config['training']['warmup_steps']
+llama_size = config['training']['llama_size']
 
 training_data_file = config['data']['training_data_file']
+valid_data_file = config['data']['valid_data_file']
 
 wandb_key = config['wandb']['api_key']
 
@@ -69,7 +76,7 @@ print(f"Training with {device}")
 
 FOLDER_PATH = os.getcwd()
 
-model_path = os.path.join(FOLDER_PATH, "weights/llama-7b")
+model_path = os.path.join(FOLDER_PATH, f"weights/llama-{llama_size}")
 
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
 if load_in_8bit:
@@ -78,8 +85,33 @@ if load_in_8bit:
                                                            torch_dtype=torch.float16,
                                                            device_map="auto")
 
+#3
+# from accelerate import init_empty_weights, load_checkpoint_and_dispatch
+# print("loading model")
+# whisper_model = "decapoda-research/llama-7b-hf"
+# weights_location = hf_hub_download(whisper_model, 'pytorch_model.bin')
+# config = AutoConfig.from_pretrained(whisper_model)
+# with init_empty_weights():
+#      model = AutoModelForSequenceClassification.from_config(config)
+# model.tie_weights()
+# model = load_checkpoint_and_dispatch(model, weights_location, device_map='auto')
+
+
+#2
+# from accelerate import init_empty_weights, load_checkpoint_and_dispatch
+
+# llama_config = AutoConfig.from_pretrained(model_path)
+# print("llama config is", llama_config)
+# with init_empty_weights():
+    #  model = LlamaForSequenceClassification(config=llama_config)
+    #  model = AutoModelForSequenceClassification.from_config(llama_config, device_map='auto')
+# model.tie_weights()
+# model = load_checkpoint_and_dispatch(model, model_path, device_map='auto')
+
+#1
 if not load_in_8bit:
-    model = LlamaForSequenceClassification.from_pretrained(model_path)
+    # model = LlamaForSequenceClassification.from_pretrained(model_path)
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, device_map='auto')
     print("moving model to PEFT")
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS, 
@@ -92,15 +124,15 @@ if not load_in_8bit:
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
-    # model = model.half()
-    model = model.to(device)
+#     # model = model.half()
+#     # model = model.to(device)
 
 print("before training")
 # print(model.state_dict()['base_model.model.score.weight'])
-print(model.state_dict()['base_model.model.score.modules_to_save.default.weight'])
+# print(model.state_dict()['base_model.model.score.modules_to_save.default.weight'])
 print("FOLDER_PATH: ", FOLDER_PATH)
 
-directory = os.path.join(FOLDER_PATH, "data")
+directory = os.path.join(FOLDER_PATH, "data/bert_data_filtered/")
 training_dir = os.path.join(FOLDER_PATH, "training")
 
 # #train_data_01_4_200.csv
@@ -112,8 +144,9 @@ training_dir = os.path.join(FOLDER_PATH, "training")
 #     train_data, valid_data = train_test_split(train_df, test_size=0.1, random_state=42)
 #     return train_data, valid_data
 
-def prepare_data():
-    # train_data_01_4_200.csv
+def prepare_data(training_data_file):
+    print("Loading file: ", training_data_file)
+
     train_file = os.path.join(directory, training_data_file)
     with open(train_file, 'r') as f:    
         entries = [json.loads(line) for line in f.readlines()]
@@ -121,12 +154,15 @@ def prepare_data():
     train_df = pd.DataFrame(entries, columns=entries[0].keys())
     train_df['jd_reusme'] = train_df['astask'] + "\n" + train_df['profile']
     train_df = train_df.dropna(axis=0)
-    train_data, valid_data = train_test_split(train_df, test_size=0.1, random_state=42)
+    # train_data, valid_data = train_test_split(train_df, test_size=0.1, random_state=42)
     # train_texts, train_labels = train_data['jd_reusme'].tolist(), train_data['label'].tolist()
     # valid_texts, valid_labels = valid_data['jd_reusme'].tolist(), valid_data['label'].tolist()
-    return train_data, valid_data
+    print("Number of training samples: ", len(train_df))
 
-train_data, valid_data = prepare_data()
+    return train_df
+
+train_data= prepare_data(training_data_file)
+valid_data = prepare_data(valid_data_file)
 
 tokenizer.add_special_tokens({"pad_token": "<pad>"})
 model.resize_token_embeddings(len(tokenizer))
@@ -138,7 +174,6 @@ model.config.pad_token_id = 32000
 #     tokenizer.add_special_tokens({"pad_token": "<pad>"})
 #     model.resize_token_embeddings(len(tokenizer))
 #     print("tokenizer size after: ", tokenizer.vocab_size)
-
     
 train_dataset = BinaryClassificationDataset(train_data, tokenizer, max_length=max_sql_len)
 valid_dataset = BinaryClassificationDataset(valid_data, tokenizer, max_length=max_sql_len)
@@ -162,11 +197,13 @@ warmup_steps = int(num_training_steps * 0.1)
 
 print("training steps: ", num_training_steps)
 print("warmup steps: ", warmup_steps)
+print("batch size: ", batch_size)
 
 training_args = TrainingArguments(
     output_dir=output_directory,
     num_train_epochs=epochs,
     per_device_train_batch_size=batch_size,
+    per_device_eval_batch_size=batch_size,
     gradient_accumulation_steps=gradient_accumulation_steps, 
     warmup_steps=warmup_steps,
     weight_decay=0.01,
@@ -174,14 +211,15 @@ training_args = TrainingArguments(
     logging_steps=10,
     # evaluation_strategy="epoch",
     evaluation_strategy="steps",
-    eval_steps=5,
+    eval_steps=30,
     fp16=fp16,
     tf32=True,
     save_strategy=save_strategy,
-    # max_steps=max_steps,
-    # save_steps=save_steps,
+    max_steps=max_steps,
+    save_steps=save_steps,
     report_to="wandb",
     # gradient_checkpointing=True
+    eval_accumulation_steps=1
 )
 
 trainer = Trainer(
@@ -190,7 +228,7 @@ trainer = Trainer(
     train_dataset=train_dataset,
     eval_dataset=valid_dataset,
     callbacks=[SaveTokenizerCallback(tokenizer, os.path.join(output_directory, "tokenizer")), SavePeftModelCallback],
-    # compute_metrics=compute_metrics,
+    compute_metrics=compute_metrics,
 )
 
 trainer.train()
@@ -203,5 +241,5 @@ print("tokenizer size ", tokenizer.vocab_size)
 
 print("after training")
 # print(model.state_dict()['base_model.model.score.weight'])
-print(model.state_dict()['base_model.model.score.modules_to_save.default.weight'])
+# print(model.state_dict()['base_model.model.score.modules_to_save.default.weight'])
 print("Trainig done. Saving model and tokenizer to disk at: ", output_directory)
