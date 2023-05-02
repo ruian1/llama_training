@@ -1,7 +1,10 @@
 import json
 import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 import pickle
 from time import time
+import sys
 
 import pandas as pd
 import torch
@@ -23,7 +26,6 @@ from llama_peft_callback import SavePeftModelCallback
 from utility import compute_metrics
 
 
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 with open('config/config_peft.json', 'r') as f:
     config = json.load(f)
@@ -40,6 +42,7 @@ fp16 = config['training']['fp16']
 gradient_accumulation_steps = config['training']['gradient_accumulation_steps']
 learning_rate = config['training']['learning_rate']
 
+evaluation_strategy = config['training']['evaluation_strategy']
 save_strategy = config['training']['save_strategy']
 max_steps = config['training']['max_steps']
 save_steps = config['training']['save_steps']
@@ -119,13 +122,17 @@ if not load_in_8bit:
         r=8, 
         lora_alpha=32, 
         lora_dropout=0.1, 
-        # target_modules=["q_proj", "v_proj"]
+        target_modules=["q_proj", "v_proj"]
     )
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
 #     # model = model.half()
 #     # model = model.to(device)
+
+print("model is", model)
+print("model.num_labels", model.num_labels)
+print("model.config.problem_type", model.config.problem_type)
 
 print("before training")
 # print(model.state_dict()['base_model.model.score.weight'])
@@ -209,14 +216,13 @@ training_args = TrainingArguments(
     weight_decay=0.01,
     logging_dir=os.path.join(training_dir, './logs'),
     logging_steps=10,
-    # evaluation_strategy="epoch",
-    evaluation_strategy="steps",
-    eval_steps=30,
+    evaluation_strategy=evaluation_strategy,
+    # eval_steps=5000000,
     fp16=fp16,
     tf32=True,
     save_strategy=save_strategy,
-    max_steps=max_steps,
-    save_steps=save_steps,
+    # max_steps=max_steps,
+    # save_steps=save_steps,
     report_to="wandb",
     # gradient_checkpointing=True
     eval_accumulation_steps=1

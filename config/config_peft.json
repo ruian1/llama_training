@@ -7,13 +7,14 @@
     },
     "training": {
         "llama_size": "13b",
-        "batch_size": 2,
-        "epochs": 2,
+        "batch_size": 1,
+        "epochs": 4,
         "fp16": false,
         "gradient_accumulation_steps": 8,
         "load_in_8bit": false,
         "learning_rate": 2e-5,
-        "save_strategy": "steps",
+        "save_strategy": "epoch",
+        "evaluation_strategy": "no",
         "max_steps": 20,
         "save_steps": 10
     },
