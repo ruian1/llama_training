@@ -1,6 +1,6 @@
 import json
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 import pickle
 from time import time
@@ -13,17 +13,22 @@ import wandb
 
 from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
 from sklearn.model_selection import train_test_split
+from time import time
 from torch.utils.data import DataLoader, Dataset, RandomSampler
-from transformers import (AdamW, LlamaTokenizer, Trainer, TrainingArguments,
-                          LlamaForSequenceClassification, AutoConfig, 
-                          AutoModelForSequenceClassification)
+from transformers import (AdamW, LlamaTokenizer, Trainer, TrainingArguments, AutoConfig, 
+                          AutoModelForSequenceClassification, AutoTokenizer, 
+                          LlamaTokenizerFast, LlamaForSequenceClassification)
 from huggingface_hub import hf_hub_download
 
 from llama_dataloader import BinaryClassificationDataset
 # from llama_model_debug import LlamaForSequenceClassification
+# from llama_model_debug import LlamaHireezSequence
+
 from llama_save_strategy import SaveTokenizerCallback
 from llama_peft_callback import SavePeftModelCallback
 from utility import compute_metrics
+from peft import PeftConfig, PeftModel
+
 
 
 
@@ -79,15 +84,22 @@ print(f"Training with {device}")
 
 FOLDER_PATH = os.getcwd()
 
-model_path = os.path.join(FOLDER_PATH, f"weights/llama-{llama_size}")
+# model_path = os.path.join(FOLDER_PATH, f"weights/llama-{llama_size}")
 
-tokenizer = LlamaTokenizer.from_pretrained(model_path)
+# tokenizer = LlamaTokenizer.from_pretrained(model_path)
+t0 = time()
+# tokenizer = AutoTokenizer.from_pretrained("lmsys/vicuna-13b-delta-v1.1")
+tokenizer = LlamaTokenizerFast.from_pretrained("/home/ruian/projects/llama_training/models/tokenizers/LlamaTokenizerFast")
+print("tokenizer is", tokenizer)
+t1 = time()
+print(f"Loading tokenizer costed {t1-t0:.2f}")
 if load_in_8bit:
     model = LlamaForSequenceClassification.from_pretrained(model_path, 
                                                            load_in_8bit=load_in_8bit, 
                                                            torch_dtype=torch.float16,
                                                            device_map="auto")
 
+"""
 #3
 # from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 # print("loading model")
@@ -110,11 +122,27 @@ if load_in_8bit:
     #  model = AutoModelForSequenceClassification.from_config(llama_config, device_map='auto')
 # model.tie_weights()
 # model = load_checkpoint_and_dispatch(model, model_path, device_map='auto')
-
+"""
 #1
 if not load_in_8bit:
     # model = LlamaForSequenceClassification.from_pretrained(model_path)
-    model = AutoModelForSequenceClassification.from_pretrained(model_path, device_map='auto')
+    # model = AutoModelForSequenceClassification.from_pretrained(model_path, device_map='auto')
+    print("Loading model")
+    # model = AutoModelForSequenceClassification.from_pretrained("lmsys/vicuna-13b-delta-v1.1")
+    t0 = time()
+    # model = LlamaForSequenceClassification.from_pretrained("lmsys/vicuna-13b-delta-v1.1")
+    
+    
+    peft_directory = "/home/ruian/projects/llama_training/training/results/10-05-2023-01-11/checkpoint-9396/adapter_model"
+    peft_config = PeftConfig.from_pretrained(peft_directory)
+    model = LlamaForSequenceClassification.from_pretrained(peft_config.base_model_name_or_path, device_map='auto')
+
+    # model = LlamaHireezSequence.from_pretrained("lmsys/vicuna-13b-delta-v1.1")
+
+    t1 = time()
+    print(f"Loading model costed {t1-t0:.2f}")
+    print("Original model is..")
+    print(model)
     print("moving model to PEFT")
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS, 
@@ -127,8 +155,8 @@ if not load_in_8bit:
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
-#     # model = model.half()
-#     # model = model.to(device)
+    # model = model.half()
+    # model = model.to(device)
 
 print("model is", model)
 print("model.num_labels", model.num_labels)
@@ -172,8 +200,8 @@ train_data= prepare_data(training_data_file)
 valid_data = prepare_data(valid_data_file)
 
 tokenizer.add_special_tokens({"pad_token": "<pad>"})
-model.resize_token_embeddings(len(tokenizer))
-model.config.pad_token_id = 32000
+# model.resize_token_embeddings(len(tokenizer))
+# model.config.pad_token_id = 32000
 
 # if tokenizer.pad_token is None:
 #     print("adding pad token....")
@@ -186,6 +214,9 @@ train_dataset = BinaryClassificationDataset(train_data, tokenizer, max_length=ma
 valid_dataset = BinaryClassificationDataset(valid_data, tokenizer, max_length=max_sql_len)
     
 # num_training_steps = epochs * (len(train_dataset) // batch_size)
+
+
+print(train_dataset[0])
 
 train_dataloader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size)
 valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size)

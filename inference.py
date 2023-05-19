@@ -2,6 +2,7 @@ import json
 import sys
 import os
 
+import argparse
 import torch
 from time import time
 
@@ -10,7 +11,16 @@ from transformers import LlamaTokenizer
 
 from llama_model_debug import LlamaForSequenceClassification
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
+parser = argparse.ArgumentParser(description='Run the model with a specific checkpoint.')
+
+# Add the checkpoint argument
+parser.add_argument('checkpoint', type=str, help='The checkpoint to load.')
+
+# Parse the arguments
+args = parser.parse_args()
+checkpoint = args.checkpoint
 
 # get the max sql length from the training config file
 with open('config/config_peft.json', 'r') as f:
@@ -23,9 +33,8 @@ with open('config/config_inference.json', 'r') as f:
     inference_config = json.load(f)
     print(inference_config)
 training_dir = inference_config['training_dir']
-checkpoint = inference_config['checkpoint']
+# checkpoint = inference_config['checkpoint']
 
-checkpoint = sys.argv[1]
 print(f"checkpoint is {checkpoint}")
 
 def load_model_tokenizer(training_dir, checkpoint):
@@ -119,11 +128,11 @@ if __name__ == "__main__":
     print("device is", device)
     model.to(device)
 
-    astask = "titles: ['marketing coordinator', 'marketing specialist', 'marketing manager', 'email marketing', 'webinar marketing'], exp_years: ['2-4', '4-6', '6-8'], location: ['california state', 'washington state', 'oregon state', 'arizona state', 'nevada state', 'massachusetts state', 'new york state', 'texas state', 'florida state', 'georgia state', 'north carolina state', 'south carolina state', 'maryland state', 'pennsylvania state'], "
-    profile = "title: ['channel marketing manager', 'head of marketing']\nyears: 2-4\nlocation: san francisco bay area, california, united states\ncompany size: 51-200\nwork experience: \n1. channel marketing manager, b-stock solutions, 2022~2100\n2. head of marketing, d\u00e9rive marketing & public relations llc., 2021~2100\n3. marketing associate, b-stock solutions, 2021~2022\ndegree: bachelor\nmajor: ['marketing and global business', 'international business']\nschool: [\"saint mary's college of california\", 'john cabot university', 'mercy high school burlingame']\nskills: ['marketing plan', 'content strategy', 'corporate', 'gotowebinar', 'analytics', 'growth marketing', 'product marketing', 'management', 'business', 'demand generation', 'creativity skills', 'email marketing', 'communication strategy', 'marketing campaigns', 'social media', 'social', 'research', 'segmentation', 'marketing automation', 'hubspot', 'market research', 'production', 'advertising', 'enterprise marketing', 'direct mail marketing', 'field marketing', 'consumer insight', 'customer service', 'b2c', 'multi-channel marketing', 'microsoft office', 'public relation', 'microsoft powerpoint', 'sales', 'administration', 'google suite', 'account', 'public relations', 'website', 'account management', 'b2b marketing', 'kpi reports', 'content creation', 'strategy', 'conversion rate', 'channel marketing', 'roi', 'direct marketing', 'communication', 'consumer', 'social media marketing', 'teamwork', 'marketing strategy', 'mass email marketing', 'marketing campaign', 'salesforce', 'campaign', 'digital marketing', 'creative development', 'google drive', 'customer relationship management crm', 'crm databases', 'direct mail fundraising', 'small business marketing', 'online marketing', 'microsoft word', 'mail', 'facebook marketing', 'team leadership', 'leadership', 'influencer marketing', 'editing', 'time management', 'company newsletters', 'collateral', 'google analytics', 'microsoft excel', 'marketing', 'local marketing']\nindustry: ['marketing and advertising', 'logistics and supply chain']\nhas email: True\nhas phone number: True\n"
-    text = astask + "\n" + profile
+    # astask = "titles: ['marketing coordinator', 'marketing specialist', 'marketing manager', 'email marketing', 'webinar marketing'], exp_years: ['2-4', '4-6', '6-8'], location: ['california state', 'washington state', 'oregon state', 'arizona state', 'nevada state', 'massachusetts state', 'new york state', 'texas state', 'florida state', 'georgia state', 'north carolina state', 'south carolina state', 'maryland state', 'pennsylvania state'], "
+    # profile = "title: ['channel marketing manager', 'head of marketing']\nyears: 2-4\nlocation: san francisco bay area, california, united states\ncompany size: 51-200\nwork experience: \n1. channel marketing manager, b-stock solutions, 2022~2100\n2. head of marketing, d\u00e9rive marketing & public relations llc., 2021~2100\n3. marketing associate, b-stock solutions, 2021~2022\ndegree: bachelor\nmajor: ['marketing and global business', 'international business']\nschool: [\"saint mary's college of california\", 'john cabot university', 'mercy high school burlingame']\nskills: ['marketing plan', 'content strategy', 'corporate', 'gotowebinar', 'analytics', 'growth marketing', 'product marketing', 'management', 'business', 'demand generation', 'creativity skills', 'email marketing', 'communication strategy', 'marketing campaigns', 'social media', 'social', 'research', 'segmentation', 'marketing automation', 'hubspot', 'market research', 'production', 'advertising', 'enterprise marketing', 'direct mail marketing', 'field marketing', 'consumer insight', 'customer service', 'b2c', 'multi-channel marketing', 'microsoft office', 'public relation', 'microsoft powerpoint', 'sales', 'administration', 'google suite', 'account', 'public relations', 'website', 'account management', 'b2b marketing', 'kpi reports', 'content creation', 'strategy', 'conversion rate', 'channel marketing', 'roi', 'direct marketing', 'communication', 'consumer', 'social media marketing', 'teamwork', 'marketing strategy', 'mass email marketing', 'marketing campaign', 'salesforce', 'campaign', 'digital marketing', 'creative development', 'google drive', 'customer relationship management crm', 'crm databases', 'direct mail fundraising', 'small business marketing', 'online marketing', 'microsoft word', 'mail', 'facebook marketing', 'team leadership', 'leadership', 'influencer marketing', 'editing', 'time management', 'company newsletters', 'collateral', 'google analytics', 'microsoft excel', 'marketing', 'local marketing']\nindustry: ['marketing and advertising', 'logistics and supply chain']\nhas email: True\nhas phone number: True\n"
+    # text = astask + "\n" + profile
 
-    inference(max_sql_len, device, tokenizer, model, text, verbose=True)
+    # inference(max_sql_len, device, tokenizer, model, text, verbose=True)
 
     import pandas as pd
     from tqdm import tqdm
@@ -144,6 +153,11 @@ if __name__ == "__main__":
     df['predicted_label'] = df.progress_apply(lambda x: inference(max_sql_len, device, 
                                                                   tokenizer, model, 
                                                                   x["jd_reusme"]), axis=1)
+    
+    directory = "results"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
     try:
         df.to_json(f"results/aisourcing_20220102_20220103_output_{checkpoint}.json", orient="records")
     except Exception as e:

@@ -20,7 +20,9 @@ class BinaryClassificationDataset(Dataset):
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         text, label = row["jd_reusme"], row["label"]
+        print("text is", text)
         inputs = self.tokenizer(text, truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt")
+        print("inputs are", inputs)
         inputs = {key: tensor[0] for key, tensor in inputs.items()}
         inputs["labels"] = torch.tensor(label, dtype=torch.long)
         return inputs

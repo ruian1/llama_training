@@ -55,11 +55,11 @@ def gauc(input_file_name):
     
     return metrics
 
-input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-3133.pkl"
+input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-2349.pkl"
 print(tabulate(gauc(input_file_name).items(), headers=["Metric", "Value"], tablefmt="pretty"))
-input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-6266.pkl"
+input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-4699.pkl"
 print(tabulate(gauc(input_file_name).items(), headers=["Metric", "Value"], tablefmt="pretty"))
-input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-9399.pkl"
+input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-7049.pkl"
 print(tabulate(gauc(input_file_name).items(), headers=["Metric", "Value"], tablefmt="pretty"))
-input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-12532.pkl"
+input_file_name = "results/aisourcing_20220102_20220103_output_checkpoint-9396.pkl"
 print(tabulate(gauc(input_file_name).items(), headers=["Metric", "Value"], tablefmt="pretty"))

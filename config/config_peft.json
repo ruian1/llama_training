@@ -10,7 +10,7 @@
         "batch_size": 1,
         "epochs": 4,
         "fp16": false,
-        "gradient_accumulation_steps": 8,
+        "gradient_accumulation_steps": 32,
         "load_in_8bit": false,
         "learning_rate": 2e-5,
         "save_strategy": "epoch",
